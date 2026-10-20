@@ -91,6 +91,18 @@ export class Sequencer {
     return events;
   }
 
+  /**
+   * The bar { start, dur } that contains audio time t: the latest known bar starting at or
+   * before t, or the first known bar when t is before the sequencer started.
+   */
+  barAt(t) {
+    for (let i = this.bars.length - 1; i >= 0; i--) {
+      const b = this.bars[i];
+      if (t >= b.start) return { start: b.start, dur: b.dur };
+    }
+    return { start: this.bars[0].start, dur: this.bars[0].dur };
+  }
+
   /** Bar phase in [0, 1) at audio time t. */
   phaseAt(t) {
     for (let i = this.bars.length - 1; i >= 0; i--) {
