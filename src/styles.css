@@ -37,6 +37,38 @@ header.top {
 .brand h1 { margin: 0; font-size: 17px; letter-spacing: 0.34em; font-weight: 700; }
 .brand span { color: var(--muted); font-size: 13px; }
 
+.transport { display: flex; align-items: center; gap: 14px 18px; flex-wrap: wrap; }
+
+.btn {
+  appearance: none;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--fg);
+  padding: 7px 14px;
+  border-radius: 999px;
+  font: inherit;
+  font-size: 13px;
+  line-height: 1.2;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, transform 0.05s;
+}
+.btn:hover { background: rgba(255, 255, 255, 0.1); }
+.btn:active { transform: translateY(1px); }
+.btn.primary {
+  background: var(--accent);
+  color: #171200;
+  border-color: transparent;
+  font-weight: 650;
+  min-width: 76px;
+}
+.btn.primary:hover { background: #ffc94d; }
+.btn.primary[aria-pressed="true"] { background: #fff; color: #111; }
+
+label.tempo { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); }
+label.tempo output { font-family: var(--mono); color: var(--fg); min-width: 3ch; text-align: right; }
+label.tempo .unit { font-size: 11px; }
+input[type="range"] { accent-color: var(--accent); width: 150px; margin: 0; }
+
 main.layout {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 372px;

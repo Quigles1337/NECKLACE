@@ -16,6 +16,13 @@
         <h1>NECKLACE</h1>
         <span>Euclidean rhythm necklaces</span>
       </div>
+      <div class="transport">
+        <button id="play" class="btn primary" aria-pressed="false" title="Play / stop (space)">Play</button>
+        <label class="tempo">Tempo
+          <input id="tempo" type="range" min="40" max="240" value="120" aria-label="Tempo in beats per minute">
+          <output id="tempo-out">120</output><span class="unit">bpm</span>
+        </label>
+      </div>
     </header>
     <main class="layout">
       <div class="stage">
