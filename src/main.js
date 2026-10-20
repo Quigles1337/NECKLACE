@@ -34,7 +34,7 @@ function showToast(text) {
   toast.textContent = text;
   toast.classList.add('show');
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => toast.classList.remove('show'), 1800);
+  toastTimer = setTimeout(() => toast.classList.remove('show'), 2600);
 }
 
 // Onsets scheduled on the audio clock, waiting to light up when their time comes.

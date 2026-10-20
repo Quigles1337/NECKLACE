@@ -78,11 +78,14 @@ main.layout {
   min-height: 0;
 }
 .stage {
-  position: relative;
+  position: sticky;
+  top: 0;
+  align-self: start;
   display: grid;
   place-items: center;
   padding: 16px;
   min-height: 60vh;
+  max-height: 100vh;
 }
 .stage canvas {
   width: min(100%, calc(100vh - 160px));
@@ -233,6 +236,7 @@ footer kbd {
 
 @media (max-width: 900px) {
   main.layout { grid-template-columns: 1fr; }
+  .stage { position: relative; max-height: none; }
   aside.panel { border-left: 0; border-top: 1px solid var(--line); }
   .stage canvas { width: min(100%, 70vh); }
 }
