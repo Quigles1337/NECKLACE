@@ -1,16 +1,12 @@
 import { pattern } from './core/euclid.js';
+import { defaultState, colorOf, clampTempo } from './core/state.js';
 import { createRenderer } from './render.js';
 import { ensureAudio, getEngine } from './audio/engine.js';
 import { playVoice } from './audio/voices.js';
 import { createTransport } from './scheduler.js';
+import { mountPanel } from './ui/controls.js';
 
-const state = {
-  tempo: 120,
-  necklaces: [
-    { id: 1, n: 8, k: 3, rot: 0, voice: 'wood', mute: false, color: '#f7b733' },
-    { id: 2, n: 8, k: 5, rot: 0, voice: 'tick', mute: false, color: '#4fd1e5' },
-  ],
-};
+const state = defaultState();
 const PANS = [-0.35, 0.35, -0.15, 0.15];
 const FLASH_SECONDS = 0.28;
 
@@ -39,6 +35,11 @@ const transport = createTransport({
     if (!nk.mute) playVoice(engine, nk.voice, ev.time, { dest: engine.bus(i, PANS[i] || 0) });
     pending.push({ key: `${nk.id}:${ev.step}`, time: ev.time });
   },
+});
+
+const panel = mountPanel(document.getElementById('panel'), {
+  getState: () => state,
+  onChange: () => {},
 });
 
 function audioNow() {
@@ -71,9 +72,9 @@ function frame() {
   const now = audioNow();
   if (playing) updateFlashes(now);
   renderer.draw({
-    rings: state.necklaces.map((nk) => ({
+    rings: state.necklaces.map((nk, i) => ({
       bits: pattern(nk.k, nk.n, nk.rot),
-      color: nk.color,
+      color: colorOf(i),
       muted: nk.mute,
       flash: playing ? flashArray(nk, now) : null,
     })),
@@ -94,12 +95,17 @@ function setPlaying(on) {
   playBtn.setAttribute('aria-pressed', String(transport.playing));
 }
 
+function syncTempo() {
+  tempoInput.value = String(state.tempo);
+  tempoOut.textContent = String(state.tempo);
+}
+
 playBtn.addEventListener('click', () => setPlaying(!transport.playing));
 canvas.addEventListener('pointerdown', () => setPlaying(!transport.playing));
 
 tempoInput.addEventListener('input', () => {
-  state.tempo = Number(tempoInput.value);
-  tempoOut.textContent = String(state.tempo);
+  state.tempo = clampTempo(tempoInput.value);
+  syncTempo();
 });
 
 window.addEventListener('keydown', (e) => {
@@ -110,6 +116,8 @@ window.addEventListener('keydown', (e) => {
 });
 
 hint.textContent = 'space · play / stop';
+syncTempo();
+panel.sync();
 new ResizeObserver(() => renderer.resize()).observe(canvas);
 renderer.resize();
 frame();
