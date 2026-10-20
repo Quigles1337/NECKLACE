@@ -13,9 +13,13 @@ import { surprise } from './core/surprise.js';
 import { identify } from './core/rhythms.js';
 import { DEFAULT_NOTES, DEFAULT_CHANNEL, clampNote, clampChannel, midiEventsFor } from './core/midi.js';
 import { midiSupported, createMidiOut } from './midi.js';
+import { embedSource, stateHash, fullPageUrl } from './core/embed.js';
 
 // The URL hash is the save file: load it, keep it current, follow it when it changes.
 const state = decode(location.hash) || defaultState();
+// ?embed=1 (or embed=1 in the hash): stage only, a tiny play button, a corner link.
+const embedFrom = embedSource(location.search, location.hash);
+const embed = embedFrom !== null;
 const PANS = [-0.35, 0.35, -0.15, 0.15];
 const FLASH_SECONDS = 0.28;
 
@@ -38,11 +42,13 @@ const recBars = document.getElementById('rec-bars');
 const recBadge = document.getElementById('rec-badge');
 const recText = document.getElementById('rec-text');
 const toast = document.getElementById('toast');
+const embedPlay = document.getElementById('embed-play');
+const embedLink = document.getElementById('embed-link');
 const renderer = createRenderer(canvas);
 
 let lastHash = '';
 function writeHash() {
-  const h = '#' + encode(state);
+  const h = '#' + stateHash(state, embedFrom === 'hash');
   if (h === lastHash) return;
   lastHash = h;
   history.replaceState(null, '', h);
@@ -87,6 +93,7 @@ function changed() {
   addBtn.disabled = state.necklaces.length >= LIMITS.maxNecklaces;
   writeHash();
   if (midi.enabled) syncMidiUI();
+  if (embed) embedLink.href = fullPageUrl(shareBase(), state);
 }
 
 const panel = mountPanel(document.getElementById('panel'), {
@@ -292,6 +299,8 @@ function setPlaying(on) {
   }
   playBtn.textContent = transport.playing ? 'Stop' : 'Play';
   playBtn.setAttribute('aria-pressed', String(transport.playing));
+  embedPlay.innerHTML = transport.playing ? '&#10074;&#10074;' : '&#9654;';
+  embedPlay.setAttribute('aria-pressed', String(transport.playing));
 }
 
 function syncTempo() {
@@ -300,6 +309,7 @@ function syncTempo() {
 }
 
 playBtn.addEventListener('click', () => setPlaying(!transport.playing));
+embedPlay.addEventListener('click', () => setPlaying(!transport.playing));
 canvas.addEventListener('pointerdown', () => setPlaying(!transport.playing));
 
 tempoInput.addEventListener('input', () => {
@@ -429,6 +439,11 @@ window.addEventListener('keydown', (e) => {
 });
 
 hint.textContent = 'space · play / stop';
+if (embed) {
+  document.documentElement.classList.add('embed');
+  embedPlay.hidden = false;
+  embedLink.hidden = false;
+}
 syncTempo();
 changed();
 panel.sync();
@@ -438,4 +453,4 @@ frame();
 
 // Scripting hook: window.NECKLACE.record({ bars: 1, download: false }) and
 // window.NECKLACE.poster({ download: false }) resolve with the Blob they would have saved.
-window.NECKLACE = Object.freeze({ record, poster, surprise: surpriseMe, midi: { toggle: toggleMidi, out: midi, config: midiConfig }, state });
+window.NECKLACE = Object.freeze({ record, poster, surprise: surpriseMe, midi: { toggle: toggleMidi, out: midi, config: midiConfig }, embed, state });
