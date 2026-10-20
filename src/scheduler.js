@@ -50,6 +50,10 @@ export function createTransport({ engine, getTempo, getNecklaces, onEvent }) {
     phase(t) {
       return seq ? seq.phaseAt(t) : 0;
     },
+    /** The bar { start, dur } containing audio time t, or null when not started. */
+    barAt(t) {
+      return seq ? seq.barAt(t) : null;
+    },
   };
   return transport;
 }

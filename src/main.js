@@ -5,6 +5,9 @@ import { ensureAudio, getEngine } from './audio/engine.js';
 import { playVoice } from './audio/voices.js';
 import { createTransport } from './scheduler.js';
 import { mountPanel } from './ui/controls.js';
+import { barDuration } from './core/schedule.js';
+import { clipPlan } from './core/clip.js';
+import { recorderSupported, recordClip, saveBlob } from './recorder.js';
 
 // The URL hash is the save file: load it, keep it current, follow it when it changes.
 const state = decode(location.hash) || defaultState();
@@ -18,6 +21,10 @@ const tempoInput = document.getElementById('tempo');
 const tempoOut = document.getElementById('tempo-out');
 const addBtn = document.getElementById('add');
 const shareBtn = document.getElementById('share');
+const recordBtn = document.getElementById('record');
+const recBars = document.getElementById('rec-bars');
+const recBadge = document.getElementById('rec-badge');
+const recText = document.getElementById('rec-text');
 const toast = document.getElementById('toast');
 const renderer = createRenderer(canvas);
 
@@ -128,6 +135,7 @@ function setPlaying(on) {
     transport.stop();
     pending.length = 0;
     flashes.clear();
+    cancelRecording();
   }
   playBtn.textContent = transport.playing ? 'Stop' : 'Play';
   playBtn.setAttribute('aria-pressed', String(transport.playing));
@@ -158,6 +166,77 @@ shareBtn.addEventListener('click', async () => {
   }
 });
 
+// Record: exactly N bars of the stage with sound, aligned to the next bar boundary.
+let recording = null;
+let recordingCancelled = false;
+const plural = (n, w) => `${n} ${w}${n === 1 ? '' : 's'}`;
+
+function cancelRecording() {
+  if (!recording) return;
+  recordingCancelled = true;
+  recording.cancel();
+}
+
+/** Returns the clip Blob (also used from window.NECKLACE for scripted checks). */
+async function record({ bars = recBars.value, download = true } = {}) {
+  if (recording) return recording;
+  if (!recorderSupported()) {
+    showToast('Recording needs MediaRecorder and canvas capture: try Chrome, Edge or Firefox.');
+    return null;
+  }
+  const engine = ensureAudio();
+  if (!transport.playing) setPlaying(true);
+  const now = engine.ctx.currentTime;
+  const bar = transport.barAt(now) || { start: now, dur: barDuration(state.tempo) };
+  const plan = clipPlan(state, bars, { now, barStart: bar.start, barDur: bar.dur, minLead: 0.05 });
+  recordingCancelled = false;
+  recordBtn.disabled = true;
+  recordBtn.setAttribute('aria-busy', 'true');
+  recBars.disabled = true;
+  tempoInput.disabled = true;
+  recBadge.hidden = false;
+  recBadge.classList.remove('live');
+  recText.textContent = `ARMED · ${plural(plan.bars, 'bar')} from the next bar`;
+  recording = recordClip({
+    canvas,
+    engine,
+    plan,
+    onStart() {
+      recBadge.classList.add('live');
+      recText.textContent = `REC · ${plural(plan.bars, 'bar')}`;
+    },
+  });
+  try {
+    const blob = await recording;
+    if (recordingCancelled) {
+      showToast('Recording cancelled.');
+      return null;
+    }
+    if (download) {
+      saveBlob(blob, plan.filename);
+      showToast(`Saved ${plan.filename} · ${(blob.size / 1e6).toFixed(1)} MB`);
+    }
+    return blob;
+  } catch (err) {
+    showToast(`Recording failed: ${err && err.message ? err.message : err}`);
+    return null;
+  } finally {
+    recording = null;
+    recordBtn.disabled = false;
+    recordBtn.removeAttribute('aria-busy');
+    recBars.disabled = false;
+    tempoInput.disabled = false;
+    recBadge.hidden = true;
+    recBadge.classList.remove('live');
+  }
+}
+
+if (!recorderSupported()) {
+  recordBtn.disabled = true;
+  recordBtn.title = 'Recording needs MediaRecorder and canvas capture (Chrome, Edge, Firefox)';
+}
+recordBtn.addEventListener('click', () => record());
+
 window.addEventListener('hashchange', () => {
   if (location.hash === lastHash) return;
   const s = decode(location.hash);
@@ -184,3 +263,6 @@ panel.sync();
 new ResizeObserver(() => renderer.resize()).observe(canvas);
 renderer.resize();
 frame();
+
+// Scripting hook: window.NECKLACE.record({ bars: 1, download: false }) resolves with the Blob.
+window.NECKLACE = Object.freeze({ record, state });

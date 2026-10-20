@@ -124,3 +124,16 @@ test('long run: every (id, bar, step) is emitted exactly once, in order', () => 
   const perBar = (id, n) => [...seen].filter((k) => k.startsWith(id + ':')).length / n;
   assert.ok(perBar('b', 16) >= bars, 'b has emitted at least every step of every completed bar');
 });
+
+test('barAt finds the bar containing a time', () => {
+  const seq = new Sequencer({ tempo: 120, startTime: 10 });
+  assert.deepEqual(seq.barAt(10), { start: 10, dur: 2 });
+  assert.deepEqual(seq.barAt(11.5), { start: 10, dur: 2 });
+  assert.deepEqual(seq.barAt(3), { start: 10, dur: 2 }, 'before the start: the first bar');
+  seq.setTempo(60);
+  seq.advance(11.9, 12.1, [{ id: 'a', n: 4 }]);
+  assert.deepEqual(seq.barAt(11.99), { start: 10, dur: 2 });
+  assert.deepEqual(seq.barAt(12), { start: 12, dur: 4 });
+  assert.deepEqual(seq.barAt(15.9), { start: 12, dur: 4 });
+  assert.deepEqual(seq.barAt(99), { start: 12, dur: 4 }, 'past the horizon: the last known bar');
+});

@@ -50,6 +50,24 @@ export function createEngine(AC) {
     latency() {
       return ctx.outputLatency || ctx.baseLatency || 0;
     },
+    /**
+     * A MediaStream carrying exactly what the speakers get (post-compressor), for
+     * recording. The speakers keep playing. Call release() when the recording is done.
+     */
+    capture() {
+      const dest = ctx.createMediaStreamDestination();
+      comp.connect(dest);
+      return {
+        stream: dest.stream,
+        release() {
+          try {
+            comp.disconnect(dest);
+          } catch {
+            /* already gone */
+          }
+        },
+      };
+    },
   };
 }
 

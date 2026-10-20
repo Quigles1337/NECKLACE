@@ -30,11 +30,20 @@
         </label>
         <button id="add" class="btn" title="Layer another necklace (up to four)">+ Necklace</button>
         <button id="share" class="btn" title="Copy a link to exactly this">Share link</button>
+        <span class="rec-group">
+          <button id="record" class="btn rec" title="Record a clip with sound (.webm), aligned to the next bar">Record</button>
+          <select id="rec-bars" class="rec-bars" aria-label="Bars to record" title="Bars to record">
+            <option value="1">1 bar</option>
+            <option value="2" selected>2 bars</option>
+            <option value="4">4 bars</option>
+          </select>
+        </span>
       </div>
     </header>
     <main class="layout">
       <div class="stage">
         <canvas id="stage" aria-label="Rhythm necklaces"></canvas>
+        <div class="rec-badge" id="rec-badge" role="status" aria-live="polite" hidden><span class="rec-dot"></span><span id="rec-text">REC</span></div>
         <div class="hint" id="hint">Click the necklace to hear its voices</div>
       </div>
       <aside class="panel" id="panel"></aside>
