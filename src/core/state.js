@@ -78,6 +78,42 @@ export function removeNecklace(state, id) {
   return true;
 }
 
+/**
+ * URL hash form of the state, e.g. `t=120&r=3.8.0.wood&r=4.4.0.kick.m`
+ * (`r` = k.n.rot.voice[.m], one per necklace). Human-readable and short; a link is a save file.
+ */
+export function encode(state) {
+  const p = new URLSearchParams();
+  p.set('t', String(state.tempo));
+  for (const nk of state.necklaces) {
+    p.append('r', `${nk.k}.${nk.n}.${nk.rot}.${nk.voice}${nk.mute ? '.m' : ''}`);
+  }
+  return p.toString();
+}
+
+/** Parse a hash (with or without the leading '#'). Returns null when it holds no necklace. */
+export function decode(str) {
+  if (typeof str !== 'string') return null;
+  const s = str.startsWith('#') ? str.slice(1) : str;
+  if (!s) return null;
+  let p;
+  try {
+    p = new URLSearchParams(s);
+  } catch {
+    return null;
+  }
+  const necklaces = [];
+  for (const r of p.getAll('r')) {
+    const parts = r.split('.');
+    if (parts.length < 2) continue;
+    const [k, n, rot, voice, ...flags] = parts;
+    if (!/^\d+$/.test(k) || !/^\d+$/.test(n)) continue;
+    necklaces.push({ k: Number(k), n: Number(n), rot: Number(rot) || 0, voice, mute: flags.includes('m') });
+  }
+  if (necklaces.length === 0) return null;
+  return normalize({ tempo: p.has('t') ? Number(p.get('t')) : 120, necklaces });
+}
+
 export function defaultState() {
   return normalize({ tempo: 120, necklaces: [makeNecklace(0), makeNecklace(1)] });
 }

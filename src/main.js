@@ -1,12 +1,13 @@
 import { pattern } from './core/euclid.js';
-import { defaultState, colorOf, clampTempo, addNecklace, removeNecklace, LIMITS } from './core/state.js';
+import { defaultState, colorOf, clampTempo, addNecklace, removeNecklace, LIMITS, encode, decode } from './core/state.js';
 import { createRenderer } from './render.js';
 import { ensureAudio, getEngine } from './audio/engine.js';
 import { playVoice } from './audio/voices.js';
 import { createTransport } from './scheduler.js';
 import { mountPanel } from './ui/controls.js';
 
-const state = defaultState();
+// The URL hash is the save file: load it, keep it current, follow it when it changes.
+const state = decode(location.hash) || defaultState();
 const PANS = [-0.35, 0.35, -0.15, 0.15];
 const FLASH_SECONDS = 0.28;
 
@@ -16,7 +17,25 @@ const playBtn = document.getElementById('play');
 const tempoInput = document.getElementById('tempo');
 const tempoOut = document.getElementById('tempo-out');
 const addBtn = document.getElementById('add');
+const shareBtn = document.getElementById('share');
+const toast = document.getElementById('toast');
 const renderer = createRenderer(canvas);
+
+let lastHash = '';
+function writeHash() {
+  const h = '#' + encode(state);
+  if (h === lastHash) return;
+  lastHash = h;
+  history.replaceState(null, '', h);
+}
+
+let toastTimer = null;
+function showToast(text) {
+  toast.textContent = text;
+  toast.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => toast.classList.remove('show'), 1800);
+}
 
 // Onsets scheduled on the audio clock, waiting to light up when their time comes.
 const pending = [];
@@ -40,6 +59,7 @@ const transport = createTransport({
 
 function changed() {
   addBtn.disabled = state.necklaces.length >= LIMITS.maxNecklaces;
+  writeHash();
 }
 
 const panel = mountPanel(document.getElementById('panel'), {
@@ -124,6 +144,30 @@ canvas.addEventListener('pointerdown', () => setPlaying(!transport.playing));
 tempoInput.addEventListener('input', () => {
   state.tempo = clampTempo(tempoInput.value);
   syncTempo();
+  changed();
+});
+
+shareBtn.addEventListener('click', async () => {
+  writeHash();
+  const url = location.href;
+  try {
+    await navigator.clipboard.writeText(url);
+    showToast('Link copied. It holds everything on screen.');
+  } catch {
+    showToast('Copy the address bar: the link holds everything on screen.');
+  }
+});
+
+window.addEventListener('hashchange', () => {
+  if (location.hash === lastHash) return;
+  const s = decode(location.hash);
+  if (!s) return;
+  state.tempo = s.tempo;
+  state.necklaces.splice(0, state.necklaces.length, ...s.necklaces);
+  lastHash = location.hash;
+  syncTempo();
+  changed();
+  panel.sync();
 });
 
 window.addEventListener('keydown', (e) => {
