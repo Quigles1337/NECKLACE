@@ -10,6 +10,7 @@ import { pattern, toBox, intervals } from '../core/euclid.js';
 import { identify } from '../core/rhythms.js';
 import { VOICES } from '../audio/voices.js';
 import { LIMITS, colorOf } from '../core/state.js';
+import { mountPicker } from './picker.js';
 
 function el(tag, className, text) {
   const e = document.createElement(tag);
@@ -53,6 +54,10 @@ export function mountPanel(root, { getState, onChange, onRemove }) {
     remove.setAttribute('aria-label', 'Remove necklace');
     head.append(swatch, ekn, name, spacer, mute, remove);
 
+    const pick = document.createElement('select');
+    pick.className = 'pick';
+    pick.setAttribute('aria-label', 'Load a named rhythm');
+
     const n = slider('steps', LIMITS.nMin, LIMITS.nMax);
     const k = slider('onsets', 1, LIMITS.nMax);
     const rot = slider('rotate', 0, LIMITS.nMax - 1);
@@ -73,7 +78,7 @@ export function mountPanel(root, { getState, onChange, onRemove }) {
     const iv = el('span', 'iv');
     pat.append(box, iv);
 
-    card.append(head, n.wrap, k.wrap, rot.wrap, voiceRow, pat);
+    card.append(head, pick, n.wrap, k.wrap, rot.wrap, voiceRow, pat);
 
     const edit = (fn) => {
       const cur = getState().necklaces.find((x) => x.id === nk.id);
@@ -92,6 +97,13 @@ export function mountPanel(root, { getState, onChange, onRemove }) {
     remove.addEventListener('click', () => {
       if (onRemove) onRemove(nk.id);
     });
+    mountPicker(pick, (e) =>
+      edit((c) => {
+        c.n = e.n;
+        c.k = e.k;
+        c.rot = e.rot;
+      }),
+    );
 
     return { card, swatch, ekn, name, mute, remove, n, k, rot, voice, box, iv };
   }

@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { bjorklund, toBox, pattern } from '../src/core/euclid.js';
-import { RHYTHMS, findRhythm, rotationForStart, identify, pickerEntries } from '../src/core/rhythms.js';
+import { RHYTHMS, findRhythm, rotationForStart, identify, pickerEntries, pickerGroups } from '../src/core/rhythms.js';
 
 test('the table holds the 27 rhythms of the paper, each generated exactly', () => {
   assert.equal(RHYTHMS.length, 27);
@@ -53,4 +53,20 @@ test('picker entries cover every rhythm and every alternate, with distinct ids',
   assert.equal(bossa.box, 'x..x..x...x..x..');
   assert.equal(bossa.rot, 6);
   for (const e of entries) assert.equal(e.box, toBox(pattern(e.k, e.n, e.rot)));
+});
+
+test('picker groups are ordered by n then k and lose nothing', () => {
+  const groups = pickerGroups();
+  const ns = groups.map((g) => g.n);
+  assert.deepEqual(ns, [...ns].sort((a, b) => a - b));
+  assert.equal(new Set(ns).size, ns.length);
+  let total = 0;
+  for (const g of groups) {
+    for (let i = 1; i < g.entries.length; i++) assert.ok(g.entries[i].k >= g.entries[i - 1].k, `n=${g.n} sorted by k`);
+    for (const e of g.entries) assert.equal(e.n, g.n);
+    total += g.entries.length;
+  }
+  assert.equal(total, pickerEntries().length);
+  const eight = groups.find((g) => g.n === 8);
+  assert.deepEqual(eight.entries.map((e) => e.name), ['Tresillo', 'Cinquillo', 'Spanish Tango', 'Bendir']);
 });

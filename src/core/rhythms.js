@@ -88,6 +88,18 @@ export function identify(k, n, rot) {
   return { name: r.name, origin: r.origin, exact: false };
 }
 
+/** Picker entries grouped by step count: [{ n, entries }] ascending in n, then k. */
+export function pickerGroups() {
+  const byN = new Map();
+  for (const e of pickerEntries()) {
+    if (!byN.has(e.n)) byN.set(e.n, []);
+    byN.get(e.n).push(e);
+  }
+  return [...byN.keys()]
+    .sort((a, b) => a - b)
+    .map((n) => ({ n, entries: byN.get(n).slice().sort((a, b) => a.k - b.k || a.rot - b.rot) }));
+}
+
 /** Flat list for a picker: the 27 paper rhythms plus their named rotations. */
 export function pickerEntries() {
   const out = [];
