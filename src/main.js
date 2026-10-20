@@ -11,6 +11,8 @@ import { recorderSupported, recordClip, saveBlob } from './recorder.js';
 import { renderPoster, POSTER_FILENAME } from './poster.js';
 import { surprise } from './core/surprise.js';
 import { identify } from './core/rhythms.js';
+import { DEFAULT_NOTES, DEFAULT_CHANNEL, clampNote, clampChannel, midiEventsFor } from './core/midi.js';
+import { midiSupported, createMidiOut } from './midi.js';
 
 // The URL hash is the save file: load it, keep it current, follow it when it changes.
 const state = decode(location.hash) || defaultState();
@@ -26,6 +28,11 @@ const addBtn = document.getElementById('add');
 const surpriseBtn = document.getElementById('surprise');
 const shareBtn = document.getElementById('share');
 const posterBtn = document.getElementById('poster');
+const midiBtn = document.getElementById('midi');
+const midiBar = document.getElementById('midibar');
+const midiOutSel = document.getElementById('midi-out');
+const midiChInput = document.getElementById('midi-ch');
+const midiNotesBox = document.getElementById('midi-notes');
 const recordBtn = document.getElementById('record');
 const recBars = document.getElementById('rec-bars');
 const recBadge = document.getElementById('rec-badge');
@@ -64,7 +71,14 @@ const transport = createTransport({
     const bits = pattern(nk.k, nk.n, nk.rot);
     if (!bits[ev.step]) return;
     const engine = getEngine();
-    if (!nk.mute) playVoice(engine, nk.voice, ev.time, { dest: engine.bus(i, PANS[i] || 0) });
+    if (!nk.mute) {
+      playVoice(engine, nk.voice, ev.time, { dest: engine.bus(i, PANS[i] || 0) });
+      if (midi.active) {
+        const bar = transport.barAt(ev.time);
+        const dur = bar ? bar.dur / ev.n : undefined;
+        midi.send(midiEventsFor([{ index: i, time: ev.time, dur }], midiConfig), engine.ctx.currentTime);
+      }
+    }
     pending.push({ key: `${nk.id}:${ev.step}`, time: ev.time });
   },
 });
@@ -72,6 +86,7 @@ const transport = createTransport({
 function changed() {
   addBtn.disabled = state.necklaces.length >= LIMITS.maxNecklaces;
   writeHash();
+  if (midi.enabled) syncMidiUI();
 }
 
 const panel = mountPanel(document.getElementById('panel'), {
@@ -114,6 +129,116 @@ function surpriseMe(rng) {
   return s;
 }
 surpriseBtn.addEventListener('click', () => surpriseMe());
+
+// Web MIDI out: one note per necklace (GM drums by default), one channel, on a MIDI output.
+const MIDI_STORAGE = 'necklace.midi';
+const midiConfig = { notes: [...DEFAULT_NOTES], channel: DEFAULT_CHANNEL };
+try {
+  const saved = JSON.parse(localStorage.getItem(MIDI_STORAGE) || 'null');
+  if (saved && typeof saved === 'object') {
+    if (Array.isArray(saved.notes)) midiConfig.notes = DEFAULT_NOTES.map((d, i) => clampNote(saved.notes[i], d));
+    midiConfig.channel = clampChannel(saved.channel);
+    midiConfig.outputId = typeof saved.outputId === 'string' ? saved.outputId : undefined;
+  }
+} catch {
+  /* no storage, defaults it is */
+}
+function saveMidiConfig() {
+  try {
+    localStorage.setItem(MIDI_STORAGE, JSON.stringify({ notes: midiConfig.notes, channel: midiConfig.channel, outputId: midi.output ? midi.output.id : midiConfig.outputId }));
+  } catch {
+    /* ignore */
+  }
+}
+
+const midi = createMidiOut({ onChange: syncMidiUI });
+
+const midiNoteInputs = DEFAULT_NOTES.map((d, i) => {
+  const label = document.createElement('label');
+  label.style.setProperty('--c', colorOf(i));
+  const sw = document.createElement('span');
+  sw.className = 'swatch';
+  const input = document.createElement('input');
+  input.type = 'number';
+  input.min = '0';
+  input.max = '127';
+  input.value = String(midiConfig.notes[i]);
+  input.title = `MIDI note for necklace ${i + 1} (GM default ${d})`;
+  input.setAttribute('aria-label', `MIDI note for necklace ${i + 1}`);
+  input.addEventListener('change', () => {
+    midiConfig.notes[i] = clampNote(input.value, d);
+    input.value = String(midiConfig.notes[i]);
+    saveMidiConfig();
+  });
+  label.append(sw, input);
+  midiNotesBox.append(label);
+  return label;
+});
+
+function syncMidiUI() {
+  const on = midi.enabled;
+  midiBtn.setAttribute('aria-pressed', String(on));
+  midiBar.hidden = !on;
+  if (!on) return;
+  const outs = midi.outputs();
+  midiOutSel.replaceChildren();
+  if (outs.length === 0) {
+    const o = document.createElement('option');
+    o.value = '';
+    o.textContent = 'no MIDI outputs found';
+    midiOutSel.append(o);
+    midiOutSel.disabled = true;
+  } else {
+    midiOutSel.disabled = false;
+    for (const out of outs) {
+      const o = document.createElement('option');
+      o.value = out.id;
+      o.textContent = out.name;
+      o.selected = out.current;
+      midiOutSel.append(o);
+    }
+  }
+  midiChInput.value = String(midiConfig.channel);
+  midiNoteInputs.forEach((label, i) => label.classList.toggle('spare', i >= state.necklaces.length));
+}
+
+midiOutSel.addEventListener('change', () => {
+  midi.select(midiOutSel.value);
+  saveMidiConfig();
+});
+midiChInput.addEventListener('change', () => {
+  midiConfig.channel = clampChannel(midiChInput.value);
+  midiChInput.value = String(midiConfig.channel);
+  saveMidiConfig();
+});
+
+async function toggleMidi(on = !midi.enabled) {
+  if (!on) {
+    midi.disable();
+    return false;
+  }
+  midiBtn.disabled = true;
+  try {
+    if (midiConfig.outputId) midi.select(midiConfig.outputId);
+    await midi.enable();
+    if (midi.outputs().length === 0) showToast('MIDI is on, but no output is connected. Plug one in or start a virtual port.');
+    else showToast(`MIDI out → ${midi.output.name}`);
+    return true;
+  } catch (err) {
+    showToast(`MIDI access refused: ${err && err.message ? err.message : err}`);
+    midi.disable();
+    return false;
+  } finally {
+    midiBtn.disabled = false;
+    syncMidiUI();
+  }
+}
+
+if (!midiSupported()) {
+  midiBtn.disabled = true;
+  midiBtn.title = 'Web MIDI is not available in this browser (Chrome and Edge have it)';
+}
+midiBtn.addEventListener('click', () => toggleMidi());
 
 function audioNow() {
   const engine = getEngine();
@@ -313,4 +438,4 @@ frame();
 
 // Scripting hook: window.NECKLACE.record({ bars: 1, download: false }) and
 // window.NECKLACE.poster({ download: false }) resolve with the Blob they would have saved.
-window.NECKLACE = Object.freeze({ record, poster, surprise: surpriseMe, state });
+window.NECKLACE = Object.freeze({ record, poster, surprise: surpriseMe, midi: { toggle: toggleMidi, out: midi, config: midiConfig }, state });

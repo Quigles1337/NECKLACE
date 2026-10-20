@@ -32,6 +32,7 @@
         <button id="surprise" class="btn" title="Two or three of the paper's rhythms that share a bar, on fresh voices, at a new tempo">Surprise me</button>
         <button id="share" class="btn" title="Copy a link to exactly this">Share link</button>
         <button id="poster" class="btn" title="Download a 1600×2000 PNG poster of this scene">Poster</button>
+        <button id="midi" class="btn" aria-pressed="false" title="Send every onset to a MIDI output (Web MIDI)">MIDI</button>
         <span class="rec-group">
           <button id="record" class="btn rec" title="Record a clip with sound (.webm), aligned to the next bar">Record</button>
           <select id="rec-bars" class="rec-bars" aria-label="Bars to record" title="Bars to record">
@@ -42,6 +43,12 @@
         </span>
       </div>
     </header>
+    <div class="midibar" id="midibar" hidden>
+      <label>output <select id="midi-out" aria-label="MIDI output"></select></label>
+      <label>channel <input id="midi-ch" type="number" min="1" max="16" value="10" aria-label="MIDI channel"></label>
+      <span class="midi-notes" id="midi-notes" aria-label="MIDI note per necklace"></span>
+      <span class="midi-hint">one note-on/off per onset, scheduled on the MIDI clock · GM drums live on channel 10</span>
+    </div>
     <main class="layout">
       <div class="stage">
         <canvas id="stage" aria-label="Rhythm necklaces"></canvas>
