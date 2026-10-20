@@ -9,6 +9,8 @@ import { barDuration } from './core/schedule.js';
 import { clipPlan } from './core/clip.js';
 import { recorderSupported, recordClip, saveBlob } from './recorder.js';
 import { renderPoster, POSTER_FILENAME } from './poster.js';
+import { surprise } from './core/surprise.js';
+import { identify } from './core/rhythms.js';
 
 // The URL hash is the save file: load it, keep it current, follow it when it changes.
 const state = decode(location.hash) || defaultState();
@@ -21,6 +23,7 @@ const playBtn = document.getElementById('play');
 const tempoInput = document.getElementById('tempo');
 const tempoOut = document.getElementById('tempo-out');
 const addBtn = document.getElementById('add');
+const surpriseBtn = document.getElementById('surprise');
 const shareBtn = document.getElementById('share');
 const posterBtn = document.getElementById('poster');
 const recordBtn = document.getElementById('record');
@@ -88,6 +91,29 @@ addBtn.addEventListener('click', () => {
     panel.sync();
   }
 });
+
+/** Replace the whole scene (tempo and necklaces) and reflect it everywhere. */
+function applyState(s) {
+  state.tempo = s.tempo;
+  state.necklaces.splice(0, state.necklaces.length, ...s.necklaces);
+  syncTempo();
+  changed();
+  panel.sync();
+}
+
+// Surprise me: a fresh scene from the paper, playing at once (the click is the gesture).
+function surpriseMe(rng) {
+  const s = surprise(rng);
+  applyState(s);
+  if (!transport.playing) setPlaying(true);
+  const names = s.necklaces.map((nk) => {
+    const id = identify(nk.k, nk.n, nk.rot);
+    return id ? id.name : `E(${nk.k},${nk.n})`;
+  });
+  showToast(`${names.join(' + ')} · ${s.tempo} bpm`);
+  return s;
+}
+surpriseBtn.addEventListener('click', () => surpriseMe());
 
 function audioNow() {
   const engine = getEngine();
@@ -266,12 +292,8 @@ window.addEventListener('hashchange', () => {
   if (location.hash === lastHash) return;
   const s = decode(location.hash);
   if (!s) return;
-  state.tempo = s.tempo;
-  state.necklaces.splice(0, state.necklaces.length, ...s.necklaces);
   lastHash = location.hash;
-  syncTempo();
-  changed();
-  panel.sync();
+  applyState(s);
 });
 
 window.addEventListener('keydown', (e) => {
@@ -291,4 +313,4 @@ frame();
 
 // Scripting hook: window.NECKLACE.record({ bars: 1, download: false }) and
 // window.NECKLACE.poster({ download: false }) resolve with the Blob they would have saved.
-window.NECKLACE = Object.freeze({ record, poster, state });
+window.NECKLACE = Object.freeze({ record, poster, surprise: surpriseMe, state });
