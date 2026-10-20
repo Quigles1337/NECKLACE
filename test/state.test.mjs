@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { PALETTE, LIMITS, PRESETS, clampInt, clampTempo, clampNecklace, makeNecklace, colorOf, normalize, defaultState } from '../src/core/state.js';
+import { PALETTE, LIMITS, PRESETS, clampInt, clampTempo, clampNecklace, makeNecklace, colorOf, normalize, defaultState, addNecklace, removeNecklace } from '../src/core/state.js';
 import { VOICE_IDS } from '../src/audio/voices.js';
 import { toBox, pattern } from '../src/core/euclid.js';
 
@@ -56,6 +56,32 @@ test('normalize coerces anything into a valid state', () => {
   assert.equal(empty.tempo, 120);
   assert.equal(normalize(null).necklaces.length, 1);
   assert.equal(normalize({ necklaces: 'nope' }).necklaces.length, 1);
+});
+
+test('addNecklace fills up to four with presets not already on screen', () => {
+  const s = defaultState();
+  const third = addNecklace(s);
+  assert.equal(third.n, PRESETS[2].n);
+  assert.equal(third.k, PRESETS[2].k);
+  const fourth = addNecklace(s);
+  assert.equal(fourth.n, PRESETS[3].n);
+  assert.equal(addNecklace(s), null);
+  assert.equal(s.necklaces.length, 4);
+  // remove the kick and add again: the kick preset comes back, not a duplicate bell
+  assert.ok(removeNecklace(s, s.necklaces[1].id));
+  const again = addNecklace(s);
+  assert.equal(again.n, PRESETS[1].n);
+  assert.equal(again.voice, PRESETS[1].voice);
+  assert.equal(new Set(s.necklaces.map((nk) => nk.id)).size, 4, 'ids stay unique');
+});
+
+test('removeNecklace never removes the last one', () => {
+  const s = normalize({ necklaces: [{ n: 8, k: 3 }] });
+  assert.equal(removeNecklace(s, s.necklaces[0].id), false);
+  assert.equal(removeNecklace(s, 99999), false);
+  addNecklace(s);
+  assert.equal(removeNecklace(s, s.necklaces[0].id), true);
+  assert.equal(s.necklaces.length, 1);
 });
 
 test('defaultState and colours', () => {

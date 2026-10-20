@@ -1,5 +1,5 @@
 import { pattern } from './core/euclid.js';
-import { defaultState, colorOf, clampTempo } from './core/state.js';
+import { defaultState, colorOf, clampTempo, addNecklace, removeNecklace, LIMITS } from './core/state.js';
 import { createRenderer } from './render.js';
 import { ensureAudio, getEngine } from './audio/engine.js';
 import { playVoice } from './audio/voices.js';
@@ -15,6 +15,7 @@ const hint = document.getElementById('hint');
 const playBtn = document.getElementById('play');
 const tempoInput = document.getElementById('tempo');
 const tempoOut = document.getElementById('tempo-out');
+const addBtn = document.getElementById('add');
 const renderer = createRenderer(canvas);
 
 // Onsets scheduled on the audio clock, waiting to light up when their time comes.
@@ -37,9 +38,26 @@ const transport = createTransport({
   },
 });
 
+function changed() {
+  addBtn.disabled = state.necklaces.length >= LIMITS.maxNecklaces;
+}
+
 const panel = mountPanel(document.getElementById('panel'), {
   getState: () => state,
-  onChange: () => {},
+  onChange: changed,
+  onRemove(id) {
+    if (removeNecklace(state, id)) {
+      changed();
+      panel.sync();
+    }
+  },
+});
+
+addBtn.addEventListener('click', () => {
+  if (addNecklace(state)) {
+    changed();
+    panel.sync();
+  }
 });
 
 function audioNow() {
@@ -117,6 +135,7 @@ window.addEventListener('keydown', (e) => {
 
 hint.textContent = 'space · play / stop';
 syncTempo();
+changed();
 panel.sync();
 new ResizeObserver(() => renderer.resize()).observe(canvas);
 renderer.resize();

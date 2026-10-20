@@ -33,7 +33,7 @@ function slider(label, min, max) {
   return { wrap, input, out };
 }
 
-export function mountPanel(root, { getState, onChange }) {
+export function mountPanel(root, { getState, onChange, onRemove }) {
   const cards = new Map();
 
   function build(nk) {
@@ -47,7 +47,11 @@ export function mountPanel(root, { getState, onChange }) {
     mute.type = 'button';
     mute.title = 'Mute';
     mute.setAttribute('aria-pressed', 'false');
-    head.append(swatch, ekn, name, spacer, mute);
+    const remove = el('button', 'icon remove', '×');
+    remove.type = 'button';
+    remove.title = 'Remove necklace';
+    remove.setAttribute('aria-label', 'Remove necklace');
+    head.append(swatch, ekn, name, spacer, mute, remove);
 
     const n = slider('steps', LIMITS.nMin, LIMITS.nMax);
     const k = slider('onsets', 1, LIMITS.nMax);
@@ -85,8 +89,11 @@ export function mountPanel(root, { getState, onChange }) {
     rot.input.addEventListener('input', () => edit((c) => (c.rot = Number(rot.input.value))));
     voice.addEventListener('change', () => edit((c) => (c.voice = voice.value)));
     mute.addEventListener('click', () => edit((c) => (c.mute = !c.mute)));
+    remove.addEventListener('click', () => {
+      if (onRemove) onRemove(nk.id);
+    });
 
-    return { card, swatch, ekn, name, mute, n, k, rot, voice, box, iv };
+    return { card, swatch, ekn, name, mute, remove, n, k, rot, voice, box, iv };
   }
 
   function update(refs, nk, index) {
@@ -103,6 +110,7 @@ export function mountPanel(root, { getState, onChange }) {
       refs.name.title = '';
     }
     refs.mute.setAttribute('aria-pressed', String(nk.mute));
+    refs.remove.disabled = getState().necklaces.length <= 1;
     if (refs.n.input.value !== String(nk.n)) refs.n.input.value = String(nk.n);
     refs.n.out.textContent = String(nk.n);
     refs.k.input.max = String(nk.n);

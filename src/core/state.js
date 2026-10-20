@@ -58,6 +58,26 @@ export function normalize(state) {
   return { tempo: clampTempo(state.tempo), necklaces };
 }
 
+/** Add a necklace (the first preset not already on screen). Returns it, or null when full. */
+export function addNecklace(state) {
+  if (state.necklaces.length >= LIMITS.maxNecklaces) return null;
+  const taken = new Set(state.necklaces.map((nk) => `${nk.k}/${nk.n}`));
+  let index = PRESETS.findIndex((p) => !taken.has(`${p.k}/${p.n}`));
+  if (index < 0) index = state.necklaces.length;
+  const nk = makeNecklace(index);
+  state.necklaces.push(nk);
+  return nk;
+}
+
+/** Remove a necklace by id. The last necklace cannot be removed. */
+export function removeNecklace(state, id) {
+  if (state.necklaces.length <= 1) return false;
+  const i = state.necklaces.findIndex((nk) => nk.id === id);
+  if (i < 0) return false;
+  state.necklaces.splice(i, 1);
+  return true;
+}
+
 export function defaultState() {
   return normalize({ tempo: 120, necklaces: [makeNecklace(0), makeNecklace(1)] });
 }
