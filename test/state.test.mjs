@@ -1,6 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { PALETTE, LIMITS, PRESETS, clampInt, clampTempo, clampNecklace, makeNecklace, colorOf, normalize, defaultState, addNecklace, removeNecklace } from '../src/core/state.js';
+import { PALETTE, LIMITS, PRESETS, clampInt, clampTempo, clampNecklace, makeNecklace, colorOf, normalize, defaultState, addNecklace, removeNecklace, encode, decode } from '../src/core/state.js';
+
+const plain = (s) => ({ tempo: s.tempo, necklaces: s.necklaces.map(({ n, k, rot, voice, mute }) => ({ n, k, rot, voice, mute })) });
 import { VOICE_IDS } from '../src/audio/voices.js';
 import { toBox, pattern } from '../src/core/euclid.js';
 
@@ -82,6 +84,37 @@ test('removeNecklace never removes the last one', () => {
   addNecklace(s);
   assert.equal(removeNecklace(s, s.necklaces[0].id), true);
   assert.equal(s.necklaces.length, 1);
+});
+
+test('encode is short, readable, and round-trips', () => {
+  const s = normalize({
+    tempo: 96,
+    necklaces: [
+      { n: 8, k: 3, rot: 0, voice: 'wood' },
+      { n: 16, k: 5, rot: 6, voice: 'hat', mute: true },
+      { n: 12, k: 7, rot: 3, voice: 'bell' },
+    ],
+  });
+  const h = encode(s);
+  assert.equal(h, 't=96&r=3.8.0.wood&r=5.16.6.hat.m&r=7.12.3.bell');
+  assert.deepEqual(plain(decode(h)), plain(s));
+  assert.deepEqual(plain(decode('#' + h)), plain(s));
+  assert.deepEqual(plain(decode(encode(defaultState()))), plain(defaultState()));
+});
+
+test('decode tolerates garbage and clamps', () => {
+  assert.equal(decode(''), null);
+  assert.equal(decode('#'), null);
+  assert.equal(decode(undefined), null);
+  assert.equal(decode('t=120'), null);
+  assert.equal(decode('r=hello&r=3'), null);
+  const s = decode('t=9999&r=99.5.-1.kazoo.m&r=3.8&r=x.y&r=4.4.0.kick.zz.m');
+  assert.equal(s.tempo, LIMITS.tempoMax);
+  assert.equal(s.necklaces.length, 3);
+  assert.deepEqual(plain(s).necklaces[0], { n: 5, k: 5, rot: 4, voice: 'tick', mute: true });
+  assert.deepEqual(plain(s).necklaces[1], { n: 8, k: 3, rot: 0, voice: 'tick', mute: false });
+  assert.deepEqual(plain(s).necklaces[2], { n: 4, k: 4, rot: 0, voice: 'kick', mute: true });
+  assert.equal(decode('r=1.3&r=1.3&r=1.3&r=1.3&r=1.3&r=1.3').necklaces.length, LIMITS.maxNecklaces);
 });
 
 test('defaultState and colours', () => {
