@@ -55,6 +55,17 @@ main.layout {
   aspect-ratio: 1 / 1;
   display: block;
 }
+.stage .hint {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 10px;
+  text-align: center;
+  color: var(--muted);
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  pointer-events: none;
+}
 aside.panel {
   border-left: 1px solid var(--line);
   padding: 14px;
