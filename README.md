@@ -74,6 +74,22 @@ whoever opens it sees and hears the same necklaces at the same tempo. A few to s
 - [Aksak against three](https://quigles1337.github.io/NECKLACE/#t=132&r=4.9.0.wood&r=2.3.0.kick)
 - [The two Aka Pygmy necklaces](https://quigles1337.github.io/NECKLACE/#t=100&r=11.24.14.tick&r=13.24.5.bell)
 
+## Embed it
+
+Add `?embed=1` and the page shows only the stage, a tiny play button and a corner
+**NECKLACE** link back to the full app. Put any scene in the hash:
+
+```html
+<iframe src="https://quigles1337.github.io/NECKLACE/?embed=1#t=120&r=3.8.0.wood&r=4.4.0.kick"
+        width="480" height="480" title="NECKLACE" loading="lazy" allow="autoplay"
+        style="border:0;border-radius:12px;background:#0a0c12"></iframe>
+```
+
+Browsers block sound until the visitor interacts with the page, so an embed never
+plays by itself: the first click on the play button (or the ring) starts the audio.
+`embed=1` also works inside the hash (`#t=120&r=3.8.0.wood&embed=1`) for places that
+strip query strings.
+
 ## Develop
 
 ```sh
