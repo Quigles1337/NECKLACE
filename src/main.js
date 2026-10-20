@@ -8,6 +8,7 @@ import { mountPanel } from './ui/controls.js';
 import { barDuration } from './core/schedule.js';
 import { clipPlan } from './core/clip.js';
 import { recorderSupported, recordClip, saveBlob } from './recorder.js';
+import { renderPoster, POSTER_FILENAME } from './poster.js';
 
 // The URL hash is the save file: load it, keep it current, follow it when it changes.
 const state = decode(location.hash) || defaultState();
@@ -21,6 +22,7 @@ const tempoInput = document.getElementById('tempo');
 const tempoOut = document.getElementById('tempo-out');
 const addBtn = document.getElementById('add');
 const shareBtn = document.getElementById('share');
+const posterBtn = document.getElementById('poster');
 const recordBtn = document.getElementById('record');
 const recBars = document.getElementById('rec-bars');
 const recBadge = document.getElementById('rec-badge');
@@ -231,6 +233,29 @@ async function record({ bars = recBars.value, download = true } = {}) {
   }
 }
 
+// Poster: a PNG of the scene with its names, tempo and link.
+function shareBase() {
+  return location.origin + location.pathname;
+}
+
+async function poster({ download = true, size = 'portrait' } = {}) {
+  posterBtn.disabled = true;
+  try {
+    const blob = await renderPoster(state, { base: shareBase(), size });
+    if (download) {
+      saveBlob(blob, POSTER_FILENAME);
+      showToast(`Saved ${POSTER_FILENAME}`);
+    }
+    return blob;
+  } catch (err) {
+    showToast(`Poster failed: ${err && err.message ? err.message : err}`);
+    return null;
+  } finally {
+    posterBtn.disabled = false;
+  }
+}
+posterBtn.addEventListener('click', () => poster());
+
 if (!recorderSupported()) {
   recordBtn.disabled = true;
   recordBtn.title = 'Recording needs MediaRecorder and canvas capture (Chrome, Edge, Firefox)';
@@ -264,5 +289,6 @@ new ResizeObserver(() => renderer.resize()).observe(canvas);
 renderer.resize();
 frame();
 
-// Scripting hook: window.NECKLACE.record({ bars: 1, download: false }) resolves with the Blob.
-window.NECKLACE = Object.freeze({ record, state });
+// Scripting hook: window.NECKLACE.record({ bars: 1, download: false }) and
+// window.NECKLACE.poster({ download: false }) resolve with the Blob they would have saved.
+window.NECKLACE = Object.freeze({ record, poster, state });
