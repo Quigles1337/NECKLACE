@@ -1,0 +1,13 @@
+{
+  "name": "necklace",
+  "version": "0.1.0",
+  "description": "Euclidean rhythm necklaces: Toussaint's polygons, drawn and played in the browser.",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "test": "node --test",
+    "serve": "node scripts/serve.mjs"
+  },
+  "repository": "github:Quigles1337/NECKLACE",
+  "license": "MIT"
+}
