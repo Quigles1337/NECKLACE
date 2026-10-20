@@ -2,6 +2,8 @@
 
 **Play it: [quigles1337.github.io/NECKLACE](https://quigles1337.github.io/NECKLACE/)**
 
+![Tresillo over a kick, playing: the playhead sweeps the two necklaces and each onset flashes as it sounds](docs/demo.gif)
+
 Euclidean rhythms drawn the way Godfried Toussaint drew them: *n* points on a circle,
 the *k* onsets joined into a polygon, a playhead sweeping once per bar. Layer up to four
 necklaces with different step counts and they play as a polyrhythm. Every one of the 27
